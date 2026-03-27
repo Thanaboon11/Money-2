@@ -75,24 +75,49 @@
             }, []);
 
             // แก้ไข: ฟังก์ชันส่งออก Excel แบบบันทึกทับไฟล์เดิม (ชื่อคงที่)
+          // ฟังก์ชันส่งออก Excel แบบรวมไฟล์เดียว + เพิ่มสรุปยอดคงเหลือแต่ละบัญชี ✨
             const exportExcel = () => {
                 const wb = XLSX.utils.book_new();
-                const allData = transactions.map(t => ({
-                    'วันที่': t.date, 'รายการ': t.description, 'ประเภท': t.type === 'income' ? 'รายรับ' : 'รายจ่าย',
-                    'จำนวน': t.amount, 'บัญชี': accounts.find(a => a.id === t.accountId)?.name || 'ทั่วไป'
-                }));
+
+                // 1. เตรียมข้อมูล Sheet รวมทุกรายการ
+           const allData = transactions.map(t => ({
+                    'วันที่': t.date, 
+                    'รายการ': t.description, 
+                    'ประเภท': t.type === 'income' ? 'รายรับ' : 'รายจ่าย',
+                    'จำนวน': t.amount, 
+                    'บัญชี': accounts.find(a => a.id === t.accountId)?.name || 'ทั่วไป'
+           }));
                 XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(allData), "รวมทุกบัญชี");
 
+                // 2. สร้าง Sheet สรุปยอดเงินคงเหลือของแต่ละบัญชี (เพิ่มใหม่ตามคำขอ)
+                const summaryData = accounts.map(acc => {
+                    const accTrans = transactions.filter(t => t.accountId === acc.id);
+                    const totalIn = accTrans.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+                    const totalOut = accTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+                    return {
+                        'ชื่อบัญชี': acc.name,
+                        'รายรับรวม': totalIn,
+                        'รายจ่ายรวม': totalOut,
+                        'ยอดเงินคงเหลือ': totalIn - totalOut
+                    };
+                });
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryData), "สรุปยอดเงินทุกบัญชี");
+
+                // 3. แยก Sheet รายละเอียดตามชื่อบัญชี
                 accounts.forEach(acc => {
                     const accTransactions = transactions.filter(t => t.accountId === acc.id);
                     if (accTransactions.length > 0) {
-                        const sheetData = accTransactions.map(t => ({
-                            'วันที่': t.date, 'รายการ': t.description,
-                            'ประเภท': t.type === 'income' ? 'รายรับ' : 'รายจ่าย', 'จำนวนเงิน': t.amount
+                 const sheetData = accTransactions.map(t => ({
+                            'วันที่': t.date, 
+                            'รายการ': t.description,
+                            'ประเภท': t.type === 'income' ? 'รายรับ' : 'รายจ่าย', 
+                            'จำนวนเงิน': t.amount
                         }));
-                        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheetData), acc.name.substring(0, 31));
+                 XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheetData), acc.name.substring(0, 31));
                     }
                 });
+
+// บันทึกเป็นชื่อไฟล์เดิมเพื่อประหยัดพื้นที่
                 XLSX.writeFile(wb, "My_Finance_Diary_Report.xlsx");
             };
 

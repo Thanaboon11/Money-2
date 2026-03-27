@@ -76,48 +76,64 @@
 
             // แก้ไข: ฟังก์ชันส่งออก Excel แบบบันทึกทับไฟล์เดิม (ชื่อคงที่)
           // ฟังก์ชันส่งออก Excel แบบรวมไฟล์เดียว + เพิ่มสรุปยอดคงเหลือแต่ละบัญชี ✨
+            // ฟังก์ชันส่งออก Excel แบบเพิ่มคอลัมน์ "ยอดเงินคงเหลือ" ต่อท้ายทุกแถว ✨
             const exportExcel = () => {
                 const wb = XLSX.utils.book_new();
 
-                // 1. เตรียมข้อมูล Sheet รวมทุกรายการ
-           const allData = transactions.map(t => ({
-                    'วันที่': t.date, 
-                    'รายการ': t.description, 
-                    'ประเภท': t.type === 'income' ? 'รายรับ' : 'รายจ่าย',
-                    'จำนวน': t.amount, 
-                    'บัญชี': accounts.find(a => a.id === t.accountId)?.name || 'ทั่วไป'
-           }));
-                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(allData), "รวมทุกบัญชี");
-
-                // 2. สร้าง Sheet สรุปยอดเงินคงเหลือของแต่ละบัญชี (เพิ่มใหม่ตามคำขอ)
+                // 1. Sheet สรุปภาพรวมยอดเงินปัจจุบันของทุกบัญชี
                 const summaryData = accounts.map(acc => {
                     const accTrans = transactions.filter(t => t.accountId === acc.id);
                     const totalIn = accTrans.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
                     const totalOut = accTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
                     return {
                         'ชื่อบัญชี': acc.name,
-                        'รายรับรวม': totalIn,
-                        'รายจ่ายรวม': totalOut,
-                        'ยอดเงินคงเหลือ': totalIn - totalOut
+                        'รายรับรวม (฿)': totalIn,
+                        'รายจ่ายรวม (฿)': totalOut,
+                        'ยอดคงเหลือล่าสุด (฿)': totalIn - totalOut
                     };
                 });
                 XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryData), "สรุปยอดเงินทุกบัญชี");
 
-                // 3. แยก Sheet รายละเอียดตามชื่อบัญชี
+                // 2. แยก Sheet ตามชื่อบัญชี + คอลัมน์ยอดคงเหลือสะสม
                 accounts.forEach(acc => {
-                    const accTransactions = transactions.filter(t => t.accountId === acc.id);
+                    // กรองรายการของบัญชีนี้และเรียงลำดับจากเก่าไปใหม่เพื่อคำนวณยอดสะสม
+                    const accTransactions = transactions
+                        .filter(t => t.accountId === acc.id)
+                        .slice()
+                        .reverse(); // เรียงจากวันที่เก่าที่สุดขึ้นก่อน
+
                     if (accTransactions.length > 0) {
-                 const sheetData = accTransactions.map(t => ({
-                            'วันที่': t.date, 
-                            'รายการ': t.description,
-                            'ประเภท': t.type === 'income' ? 'รายรับ' : 'รายจ่าย', 
-                            'จำนวนเงิน': t.amount
-                        }));
-                 XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheetData), acc.name.substring(0, 31));
+                        let runningBalance = 0;
+                        const sheetData = accTransactions.map(t => {
+                            if (t.type === 'income') {
+                                runningBalance += t.amount;
+                            } else {
+                                runningBalance -= t.amount;
+                            }
+                            
+                            return {
+                                'วันที่': t.date, 
+                                'รายการ': t.description,
+                                'ประเภท': t.type === 'income' ? 'รายรับ' : 'รายจ่าย', 
+                                'จำนวนเงิน': t.amount,
+                                'ยอดเงินคงเหลือสะสม': runningBalance // คอลัมน์ที่เพิ่มต่อท้าย
+                            };
+                        });
+
+                        // กลับรายการให้เอาวันที่ล่าสุดขึ้นข้างบนเหมือนในแอป (ถ้าต้องการ)
+                        const finalData = sheetData.reverse();
+
+                        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(finalData), acc.name.substring(0, 31));
                     }
                 });
 
-// บันทึกเป็นชื่อไฟล์เดิมเพื่อประหยัดพื้นที่
+                // 3. Sheet รวมทุกรายการ (History)
+                const allData = transactions.map(t => ({
+                    'วันที่': t.date, 'รายการ': t.description, 'ประเภท': t.type === 'income' ? 'รายรับ' : 'รายจ่าย',
+                    'จำนวนเงิน': t.amount, 'บัญชี': accounts.find(a => a.id === t.accountId)?.name || 'ทั่วไป'
+                }));
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(allData), "รวมทุกรายการ");
+
                 XLSX.writeFile(wb, "My_Finance_Diary_Report.xlsx");
             };
 

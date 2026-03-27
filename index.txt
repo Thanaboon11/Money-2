@@ -4,14 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>My Sweet Finance Diary ✨</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@100;400;700&display=swap" rel="stylesheet">
     
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="theme-color" content="#F43F5E">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-    
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
@@ -27,17 +33,16 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
-        // ข้อมูลการเชื่อมต่อ Firebase ของคุณ Jiraporn Traganthai
-       const firebaseConfig = {
-  apiKey: "AIzaSyALcH0D-G0H6g0yfgLHrxKcYiHZAq7jAGs",
-  authDomain: "monney-33caf.firebaseapp.com",
-  databaseURL: "https://monney-33caf-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "monney-33caf",
-  storageBucket: "monney-33caf.firebasestorage.app",
-  messagingSenderId: "709336346002",
-  appId: "1:709336346002:web:444bd02c294bd194d6e54b",
-  measurementId: "G-XR98M0L8KP"
-};
+        const firebaseConfig = {
+            apiKey: "AIzaSyALcH0D-G0H6g0yfgLHrxKcYiHZAq7jAGs",
+            authDomain: "monney-33caf.firebaseapp.com",
+            databaseURL: "https://monney-33caf-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "monney-33caf",
+            storageBucket: "monney-33caf.firebasestorage.app",
+            messagingSenderId: "709336346002",
+            appId: "1:709336346002:web:444bd02c294bd194d6e54b",
+            measurementId: "G-XR98M0L8KP"
+        };
 
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -52,7 +57,6 @@
             const [formData, setFormData] = useState({ description: '', amount: '', type: 'expense', accountId: '', date: new Date().toISOString().split('T')[0] });
 
             useEffect(() => {
-                // ดึงข้อมูลบัญชี (Accounts)
                 db.ref('accounts').on('value', snap => {
                     const data = snap.val();
                     if (data) {
@@ -63,7 +67,6 @@
                         db.ref('accounts').push({name: 'เงินสด 💵', color: 'from-pink-400 to-rose-300'});
                     }
                 });
-                // ดึงข้อมูลรายการ (Transactions)
                 db.ref('transactions').on('value', snap => {
                     const data = snap.val();
                     if (data) setTransactions(Object.keys(data).map(k => ({id: k, ...data[k]})).reverse());
@@ -71,30 +74,26 @@
                 });
             }, []);
 
-            // ฟังก์ชันส่งออก Excel แบบแยก Sheet ตามบัญชี ✨
+            // แก้ไข: ฟังก์ชันส่งออก Excel แบบบันทึกทับไฟล์เดิม (ชื่อคงที่)
             const exportExcel = () => {
                 const wb = XLSX.utils.book_new();
-
-                // 1. Sheet รวมทุกรายการ
                 const allData = transactions.map(t => ({
-                    'วันที่': t.date, 'รายการ': t.description, 'ประเภท': t.type === 'income' ? 'รับ' : 'จ่าย',
+                    'วันที่': t.date, 'รายการ': t.description, 'ประเภท': t.type === 'income' ? 'รายรับ' : 'รายจ่าย',
                     'จำนวน': t.amount, 'บัญชี': accounts.find(a => a.id === t.accountId)?.name || 'ทั่วไป'
                 }));
                 XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(allData), "รวมทุกบัญชี");
 
-                // 2. แยก Sheet ตามชื่อบัญชี
                 accounts.forEach(acc => {
                     const accTransactions = transactions.filter(t => t.accountId === acc.id);
                     if (accTransactions.length > 0) {
                         const sheetData = accTransactions.map(t => ({
                             'วันที่': t.date, 'รายการ': t.description,
-                            'ประเภท': t.type === 'income' ? 'รับ' : 'จ่าย', 'จำนวนเงิน': t.amount
+                            'ประเภท': t.type === 'income' ? 'รายรับ' : 'รายจ่าย', 'จำนวนเงิน': t.amount
                         }));
                         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheetData), acc.name.substring(0, 31));
                     }
                 });
-
-                XLSX.writeFile(wb, `Diary_Finance_Report_${new Date().toISOString().slice(0,10)}.xlsx`);
+                XLSX.writeFile(wb, "My_Finance_Diary_Report.xlsx");
             };
 
             const handleSubmit = (e) => {
@@ -120,7 +119,6 @@
                 <div className="max-w-6xl mx-auto px-4 pt-8">
                     <h1 className="text-3xl font-black text-rose-500 text-center mb-8">Diary Finance Cloud ✨</h1>
                     
-                    {/* สรุปยอดเงิน */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                         <div className="bg-white p-6 rounded-3xl shadow-sm text-center border-b-4 border-pink-100">
                             <p className="text-2xl font-black">฿{stats.bal.toLocaleString()}</p>
@@ -137,7 +135,6 @@
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        {/* คอลัมน์ซ้าย: ฟอร์มบันทึก */}
                         <div className="lg:col-span-5 space-y-6">
                             <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border-4 border-white">
                                 <h2 className="font-black text-xl mb-6">{editingId ? '🪄 แก้ไขรายการ' : '📔 จดรายการใหม่'}</h2>
@@ -153,12 +150,11 @@
                                     <input type="text" placeholder="รายการ..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none border-none shadow-inner" />
                                     <input type="number" placeholder="0.00" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full p-5 bg-slate-50 rounded-2xl font-black text-3xl text-center outline-none border-none shadow-inner" />
                                     <button type="submit" className="w-full py-5 bg-pink-500 text-white font-black rounded-3xl shadow-lg hover:scale-95 transition-all">บันทึกข้อมูล ✨</button>
-                                    <button type="button" onClick={exportExcel} className="w-full py-3 border-2 border-emerald-400 text-emerald-600 font-black rounded-3xl text-sm hover:bg-emerald-50 transition-all">ส่งออก EXCEL แยก Sheet 📑</button>
+                                    <button type="button" onClick={exportExcel} className="w-full py-3 border-2 border-emerald-400 text-emerald-600 font-black rounded-3xl text-sm hover:bg-emerald-50 transition-all">ส่งออก EXCEL อัปเดตไฟล์เดิม 📑</button>
                                 </form>
                             </div>
                         </div>
 
-                        {/* คอลัมน์ขวา: ประวัติ & จัดการบัญชี */}
                         <div className="lg:col-span-7 space-y-6">
                             <div className="bg-white/40 backdrop-blur-md p-8 rounded-[2.5rem] border-4 border-white shadow-sm min-h-[400px]">
                                 <div className="flex justify-between items-center mb-6">
@@ -195,7 +191,6 @@
                         </div>
                     </div>
 
-                    {/* Modal เพิ่มบัญชี */}
                     {showAddAcc && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-rose-200/50 backdrop-blur-md p-6">
                             <div className="bg-white w-full max-w-sm p-12 rounded-[3.5rem] shadow-2xl border-8 border-white animate-in zoom-in-95 duration-300 text-center">

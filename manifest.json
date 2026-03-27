@@ -1,0 +1,23 @@
+{
+  "short_name": "FinanceDiary",
+  "name": "My Sweet Finance Diary ✨",
+  "description": "บันทึกรายรับรายจ่ายสไตล์หวานละมุน",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF5F7",
+  "theme_color": "#F43F5E"
+}

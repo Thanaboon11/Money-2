@@ -13,7 +13,7 @@
       "src": "icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "maskable"
+      "purpose": "maskable" 
     },
     {
       "src": "icon-512.png",
@@ -24,7 +24,6 @@
   ],
   "start_url": "./index.html",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#FFF5F7",
-  "theme_color": "#F43F5E"
+  "theme_color": "#F43F5E",
+  "background_color": "#FFF5F7"
 }

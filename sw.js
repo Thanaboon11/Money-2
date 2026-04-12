@@ -1,4 +1,1 @@
-// sw.js
-self.addEventListener('fetch', (event) => {
-  // ไม่ต้องใส่โค้ดซับซ้อน แค่มีไฟล์นี้เพื่อให้เบราว์เซอร์ยอมรับการติดตั้ง
-});
+self.addEventListener('fetch', () => {});

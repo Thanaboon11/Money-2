@@ -3,14 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>My Sweet Finance Diary ✨</title>
+    <title>Professional Wallet Tracker ✨</title>
     
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#F43F5E">
-    <link rel="apple-touch-icon" href="icon-512.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@100;400;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -21,23 +15,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
     <style>
-        body { 
-            font-family: 'Anuphan', sans-serif; 
-            -webkit-tap-highlight-color: transparent; 
-            padding-bottom: env(safe-area-inset-bottom);
-        }
+        body { font-family: 'Anuphan', sans-serif; -webkit-tap-highlight-color: transparent; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #FFC0CB; border-radius: 10px; }
-        
-        /* ปรับสไตล์ให้ดูละมุนขึ้นในทุกจอ */
-        .glass-card {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
     </style>
 </head>
-<body class="bg-[#FFF5F7] min-h-screen">
+<body class="bg-[#F1F5F9] min-h-screen text-slate-800 p-2 md:p-6">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -73,26 +57,37 @@
                         setAccounts(list);
                         if (!formData.accountId && list.length > 0) setFormData(f => ({...f, accountId: list[0].id}));
                     } else {
-                        db.ref('accounts').push({name: 'เงินสด 💵', color: 'from-pink-400 to-rose-300'});
+                        db.ref('accounts').push({name: 'บัญชีหลัก 💳'});
                     }
                 });
                 db.ref('transactions').on('value', snap => {
                     const data = snap.val();
                     if (data) setTransactions(Object.keys(data).map(k => ({id: k, ...data[k]})).reverse());
-                    else setTransactions([]);
                 });
             }, []);
 
             const exportExcel = () => {
                 const wb = XLSX.utils.book_new();
-                const summaryData = accounts.map(acc => {
-                    const accTrans = transactions.filter(t => t.accountId === acc.id);
-                    const totalIn = accTrans.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-                    const totalOut = accTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-                    return { 'ชื่อบัญชี': acc.name, 'รายรับรวม (฿)': totalIn, 'รายจ่ายรวม (฿)': totalOut, 'ยอดคงเหลือล่าสุด (฿)': totalIn - totalOut };
+                const summary = accounts.map(acc => {
+                    const ts = transactions.filter(t => t.accountId === acc.id);
+                    const inc = ts.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+                    const exp = ts.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+                    return { 'บัญชี': acc.name, 'รับ': inc, 'จ่าย': exp, 'คงเหลือ': inc - exp };
                 });
-                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryData), "สรุปยอด");
-                XLSX.writeFile(wb, "Report.xlsx");
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), "สรุปยอด");
+
+                accounts.forEach(acc => {
+                    const ts = transactions.filter(t => t.accountId === acc.id).sort((a,b) => new Date(a.date) - new Date(b.date));
+                    if(ts.length > 0) {
+                        let bal = 0;
+                        const data = ts.map(t => {
+                            bal += (t.type === 'income' ? t.amount : -t.amount);
+                            return { 'วันที่': t.date, 'รายการ': t.description, 'รายรับ': t.type === 'income' ? t.amount : 0, 'รายจ่าย': t.type === 'expense' ? t.amount : 0, 'ยอดสะสม': bal };
+                        });
+                        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), acc.name.substring(0, 30));
+                    }
+                });
+                XLSX.writeFile(wb, `Wallet_Report.xlsx`);
             };
 
             const handleSubmit = (e) => {
@@ -125,92 +120,83 @@
             }, [transactions, activeAcc]);
 
             return (
-                <div className="max-w-7xl mx-auto px-4 py-6 md:py-10 pb-32">
-                    <header className="flex flex-col items-center mb-8">
-                        <h1 className="text-3xl md:text-5xl font-black text-rose-500 drop-shadow-sm mb-2">Diary Finance ✨</h1>
-                        <p className="text-xs md:text-sm font-bold text-pink-300 tracking-widest uppercase">Cloud Synchronization</p>
+                <div className="max-w-7xl mx-auto space-y-6">
+                    <header className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm">
+                        <h1 className="text-xl font-bold text-blue-800">📊 SMART WALLET</h1>
+                        <button onClick={exportExcel} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold">EXCEL</button>
                     </header>
                     
-                    {/* สรุปยอดเงิน: แถวเดียวในมือถือ กริตในจอใหญ่ */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
-                        <div className="bg-white p-5 rounded-[1.5rem] md:rounded-[2rem] shadow-sm text-center border-b-4 border-pink-100">
-                            <p className="text-2xl md:text-3xl font-black text-slate-700">฿{stats.bal.toLocaleString()}</p>
-                            <p className="text-[10px] font-bold text-rose-300 uppercase mt-1">คงเหลือ</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <p className="text-xs font-bold text-slate-400 uppercase">Balance</p>
+                            <p className="text-2xl font-bold">฿{stats.bal.toLocaleString()}</p>
                         </div>
-                        <div className="bg-gradient-to-br from-emerald-400 to-teal-500 p-5 rounded-[1.5rem] md:rounded-[2rem] shadow-md text-white text-center">
-                            <p className="text-2xl md:text-3xl font-black">฿{stats.in.toLocaleString()}</p>
-                            <p className="text-[10px] font-bold opacity-80 uppercase mt-1">รายรับ</p>
+                        <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
+                            <p className="text-xs font-bold text-emerald-600 uppercase">Income</p>
+                            <p className="text-2xl font-bold text-emerald-700">฿{stats.in.toLocaleString()}</p>
                         </div>
-                        <div className="bg-gradient-to-br from-rose-400 to-pink-500 p-5 rounded-[1.5rem] md:rounded-[2rem] shadow-md text-white text-center">
-                            <p className="text-2xl md:text-3xl font-black">฿{stats.out.toLocaleString()}</p>
-                            <p className="text-[10px] font-bold opacity-80 uppercase mt-1">รายจ่าย</p>
+                        <div className="bg-rose-50 p-6 rounded-2xl border border-rose-100">
+                            <p className="text-xs font-bold text-rose-600 uppercase">Expense</p>
+                            <p className="text-2xl font-bold text-rose-700">฿{stats.out.toLocaleString()}</p>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                        {/* ส่วนจดบันทึก: ในคอมพิวเตอร์จะลอยอยู่กับที่ (Sticky) */}
-                        <div className="lg:col-span-5 order-1 lg:sticky lg:top-8">
-                            <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-xl border-4 border-white">
-                                <h2 className="font-black text-xl mb-6 text-slate-700 flex items-center gap-2">
-                                    {editingId ? '🪄 แก้ไขข้อมูล' : '📔 บันทึกรายการ'}
-                                </h2>
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        <div className="lg:col-span-5 space-y-6">
+                            <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200">
+                                <h2 className="text-lg font-bold mb-4 border-l-4 border-blue-600 pl-3">{editingId ? 'แก้ไขรายการ' : 'บันทึกรายการ'}</h2>
                                 <form onSubmit={handleSubmit} className="space-y-4">
-                                    <div className="flex bg-slate-100 p-1.5 rounded-2xl">
-                                        <button type="button" onClick={() => setFormData({...formData, type: 'income'})} className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${formData.type === 'income' ? 'bg-white shadow-md text-emerald-500 scale-100' : 'text-slate-400 scale-95 opacity-60'}`}>รายรับ</button>
-                                        <button type="button" onClick={() => setFormData({...formData, type: 'expense'})} className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${formData.type === 'expense' ? 'bg-white shadow-md text-rose-500 scale-100' : 'text-slate-400 scale-95 opacity-60'}`}>รายจ่าย</button>
+                                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                                        <button type="button" onClick={() => setFormData({...formData, type: 'income'})} className={`flex-1 py-2 rounded-md font-bold text-sm ${formData.type === 'income' ? 'bg-white shadow text-emerald-600' : 'text-slate-500'}`}>รายรับ</button>
+                                        <button type="button" onClick={() => setFormData({...formData, type: 'expense'})} className={`flex-1 py-2 rounded-md font-bold text-sm ${formData.type === 'expense' ? 'bg-white shadow text-rose-600' : 'text-slate-500'}`}>รายจ่าย</button>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <select value={formData.accountId} onChange={e => setFormData({...formData, accountId: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-slate-600 text-sm outline-none">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <select value={formData.accountId} onChange={e => setFormData({...formData, accountId: e.target.value})} className="p-3 bg-slate-50 border rounded-lg text-sm">
                                             {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                                         </select>
-                                        <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-slate-500 text-sm outline-none" />
+                                        <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="p-3 bg-slate-50 border rounded-lg text-sm" />
                                     </div>
-                                    <input type="text" placeholder="พิมพ์รายการ..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none text-sm" />
-                                    <input type="number" inputMode="decimal" placeholder="0.00" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full p-5 bg-pink-50 rounded-3xl font-black text-4xl text-center text-rose-500 outline-none" />
-                                    <button type="submit" className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-black rounded-2xl shadow-lg active:scale-95 transition-all">บันทึก ✨</button>
+                                    <input type="text" placeholder="รายละเอียด..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-lg text-sm" />
+                                    <input type="number" placeholder="0.00" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full p-4 bg-blue-50 border-2 border-blue-100 rounded-xl font-bold text-3xl text-center text-blue-700" />
+                                    <button type="submit" className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg shadow-lg">บันทึก</button>
                                 </form>
                             </div>
                         </div>
 
-                        {/* ส่วนแสดงประวัติ */}
-                        <div className="lg:col-span-7 order-2">
-                            <div className="glass-card p-6 md:p-8 rounded-[2.5rem] border-4 border-white shadow-sm min-h-[400px]">
+                        <div className="lg:col-span-7 space-y-6">
+                            <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200">
                                 <div className="flex justify-between items-center mb-6">
-                                    <h2 className="font-black text-xl text-slate-700">ประวัติการใช้จ่าย</h2>
-                                    <button onClick={() => setShowAddAcc(true)} className="px-4 py-2 bg-pink-500 text-white rounded-xl font-bold text-xs shadow-md">+ เพิ่มบัญชี</button>
+                                    <h2 className="text-lg font-bold">ประวัติรายการ</h2>
+                                    <button onClick={() => setShowAddAcc(true)} className="bg-blue-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold">+ บัญชี</button>
                                 </div>
                                 
-                                {/* ตัวเลือกบัญชี: ปัดซ้ายขวาได้ในมือถือ */}
-                                <div className="flex gap-2 overflow-x-auto pb-4 mb-6 custom-scrollbar">
-                                    <button onClick={() => setActiveAcc('all')} className={`px-5 py-2 rounded-xl text-[10px] font-black whitespace-nowrap ${activeAcc === 'all' ? 'bg-pink-500 text-white shadow-md' : 'bg-white text-pink-400'}`}>ทั้งหมด</button>
+                                <div className="flex gap-2 overflow-x-auto pb-4 mb-4 custom-scrollbar">
+                                    <button onClick={() => setActiveAcc('all')} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${activeAcc === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>ทั้งหมด</button>
                                     {accounts.map(a => (
-                                        <div key={a.id} className="relative group">
-                                            <button onClick={() => setActiveAcc(a.id)} className={`px-5 py-2 rounded-xl text-[10px] font-black whitespace-nowrap transition-all ${activeAcc === a.id ? 'bg-white text-rose-500 ring-2 ring-rose-100 shadow-sm' : 'bg-white/40 text-slate-400'}`}>{a.name}</button>
-                                            <button onClick={() => {if(confirm('ลบกระเป๋าเงิน?')) db.ref(`accounts/${a.id}`).remove()}} className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[8px] opacity-0 group-hover:opacity-100 flex items-center justify-center">✕</button>
+                                        <div key={a.id} className="relative flex items-center bg-slate-100 rounded-full px-4 py-1.5 gap-2 transition-all">
+                                            <button onClick={() => setActiveAcc(a.id)} className={`text-xs font-bold whitespace-nowrap ${activeAcc === a.id ? 'text-blue-600' : 'text-slate-500'}`}>{a.name}</button>
+                                            <button onClick={() => {if(confirm('ลบบัญชีนี้?')) db.ref(`accounts/${a.id}`).remove()}} className="text-rose-400 hover:text-rose-600 text-xs">✕</button>
                                         </div>
                                     ))}
                                 </div>
 
                                 <div className="space-y-6">
-                                    {Object.keys(groupedTransactions).sort((a, b) => new Date(b) - new Date(a)).map(date => (
+                                    {Object.keys(groupedTransactions).sort((a,b) => new Date(b)-new Date(a)).map(date => (
                                         <div key={date} className="space-y-3">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-[10px] font-black text-pink-400 bg-pink-50 px-3 py-1 rounded-full">{date}</span>
-                                                <div className="h-[1px] flex-1 bg-pink-100"></div>
-                                            </div>
+                                            <p className="text-[11px] font-bold text-slate-400 border-b pb-1 uppercase">{date}</p>
                                             {groupedTransactions[date].map(t => (
-                                                <div key={t.id} className="p-4 bg-white/80 rounded-2xl flex justify-between items-center group active:bg-pink-50 transition-all border border-transparent hover:border-pink-200">
+                                                <div key={t.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl group hover:bg-white border border-transparent hover:border-slate-200">
                                                     <div className="flex-1 min-w-0 pr-4">
-                                                        <p className="font-bold text-slate-700 truncate text-sm">{t.description}</p>
-                                                        <p className="text-[9px] text-pink-300 font-black uppercase tracking-tighter">{accounts.find(a => a.id === t.accountId)?.name || 'ทั่วไป'}</p>
+                                                        <p className="font-bold text-sm truncate">{t.description}</p>
+                                                        <p className="text-[10px] text-blue-500 font-bold uppercase">{accounts.find(a => a.id === t.accountId)?.name}</p>
                                                     </div>
                                                     <div className="flex items-center gap-3">
-                                                        <p className={`font-black text-sm whitespace-nowrap ${t.type === 'income' ? 'text-emerald-500' : 'text-slate-600'}`}>
+                                                        <p className={`font-bold text-sm ${t.type === 'income' ? 'text-emerald-600' : 'text-slate-800'}`}>
                                                             {t.type === 'income' ? '+' : '-'}฿{t.amount.toLocaleString()}
                                                         </p>
-                                                        <div className="flex gap-1 md:opacity-0 group-hover:opacity-100">
-                                                            <button onClick={() => {setEditingId(t.id); setFormData(t); window.scrollTo({top:0, behavior:'smooth'})}} className="p-1.5 text-indigo-300">✎</button>
-                                                            <button onClick={() => {if(confirm('ลบรายการนี้?')) db.ref(`transactions/${t.id}`).remove()}} className="p-1.5 text-rose-300">✕</button>
+                                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                                            <button onClick={() => {setEditingId(t.id); setFormData(t); window.scrollTo(0,0)}} className="text-blue-500 text-xs font-bold">แก้ไข</button>
+                                                            <button onClick={() => {if(confirm('ลบรายการ?')) db.ref(`transactions/${t.id}`).remove()}} className="text-rose-500 text-xs font-bold">ลบ</button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -222,27 +208,14 @@
                         </div>
                     </div>
 
-                    {/* Bottom Nav สำหรับมือถือ */}
-                    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm glass-card rounded-[2rem] shadow-2xl border-2 border-white p-2 flex justify-around items-center lg:hidden z-40">
-                        <button onClick={() => window.scrollTo({top:0, behavior:'smooth'})} className="flex flex-col items-center p-2 text-rose-500">
-                            <span className="text-xl">📔</span>
-                            <span className="text-[8px] font-black">บันทึก</span>
-                        </button>
-                        <button onClick={exportExcel} className="flex flex-col items-center p-2 text-emerald-500">
-                            <span className="text-xl">📊</span>
-                            <span className="text-[8px] font-black">รายงาน</span>
-                        </button>
-                    </nav>
-
-                    {/* Modal เพิ่มบัญชี */}
                     {showAddAcc && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-rose-50/80 backdrop-blur-sm p-6">
-                            <div className="bg-white w-full max-w-xs p-8 rounded-[3rem] shadow-2xl border-4 border-white text-center">
-                                <h3 className="text-xl font-black text-slate-700 mb-6">เพิ่มกระเป๋าเงิน 🌈</h3>
-                                <input autoFocus type="text" value={newAccName} onChange={e => setNewAccName(e.target.value)} placeholder="ชื่อบัญชี..." className="w-full px-6 py-4 bg-slate-50 rounded-2xl outline-none font-bold text-center mb-6" />
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+                            <div className="bg-white w-full max-w-xs p-8 rounded-2xl shadow-2xl">
+                                <h3 className="text-lg font-bold text-center mb-6">เพิ่มกระเป๋าเงินใหม่</h3>
+                                <input autoFocus type="text" value={newAccName} onChange={e => setNewAccName(e.target.value)} placeholder="ชื่อบัญชี..." className="w-full px-4 py-3 bg-slate-50 border rounded-xl font-bold text-center mb-6" />
                                 <div className="flex gap-2">
-                                    <button onClick={() => setShowAddAcc(false)} className="flex-1 py-3 text-slate-300 font-bold text-sm">ปิด</button>
-                                    <button onClick={() => {if(newAccName){db.ref('accounts').push({name: newAccName, color: 'from-pink-400'}); setNewAccName(''); setShowAddAcc(false);}}} className="flex-[2] py-3 bg-pink-500 text-white font-black rounded-2xl text-sm shadow-md">สร้างเลย!</button>
+                                    <button onClick={() => setShowAddAcc(false)} className="flex-1 py-2.5 text-slate-400 font-bold text-sm">ยกเลิก</button>
+                                    <button onClick={() => {if(newAccName){db.ref('accounts').push({name: newAccName}); setNewAccName(''); setShowAddAcc(false);}}} className="flex-[2] py-2.5 bg-blue-600 text-white font-bold rounded-xl text-sm shadow-lg">บันทึก</button>
                                 </div>
                             </div>
                         </div>
@@ -253,16 +226,6 @@
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
-    </script>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('PWA Ready!'))
-                .catch(err => console.log('PWA Error', err));
-            });
-        }
     </script>
 </body>
 </html>

@@ -86,24 +86,48 @@
                     const ws = wb.Sheets[wsname];
                     const data = XLSX.utils.sheet_to_json(ws);
 
-                    if (window.confirm(`พบข้อมูล ${data.length} รายการ ต้องการนำเข้าบัญชี "กรุงไทยบี" หรือไม่?`)) {
+                    let addedCount = 0;
+                    let skippedCount = 0;
+                    let errorCount = 0;
+
+                    if (window.confirm(`พบข้อมูล ${data.length} รายการ ต้องการนำเข้าหรือไม่?`)) {
                         data.forEach(row => {
                             const amountIn = Number(row['รายรับ']) || 0;
                             const amountOut = Number(row['รายจ่าย']) || 0;
+                            const amt = amountIn > 0 ? amountIn : amountOut;
+                            const desc = row['รายการ'] || 'นำเข้าจาก Excel';
+                            const date = row['วันที่'] || new Date().toISOString().split('T')[0];
+                            const type = amountIn > 0 ? 'income' : 'expense';
                             
-                            const payload = {
-                                description: row['รายการ'] || 'นำเข้าจากสเตทเมนท์',
-                                amount: amountIn > 0 ? amountIn : amountOut,
-                                type: amountIn > 0 ? 'income' : 'expense',
-                                accountId: "-OoeH5V-JKQa3E5xrVSL", 
-                                date: row['วันที่'] || new Date().toISOString().split('T')[0]
-                            };
+                            const targetAcc = accounts.find(a => a.name === row['บัญชี']);
+                            const targetId = targetAcc ? targetAcc.id : null;
 
-                            if (payload.amount > 0) {
-                                db.ref('transactions').push(payload);
+                            if (!targetId) {
+                                errorCount++;
+                                return;
+                            }
+
+                            const isDuplicate = transactions.some(t => 
+                                t.date === date && 
+                                t.description === desc && 
+                                t.amount === amt &&
+                                t.accountId === targetId
+                            );
+
+                            if (!isDuplicate && amt > 0) {
+                                db.ref('transactions').push({
+                                    description: desc,
+                                    amount: amt,
+                                    type: type,
+                                    accountId: targetId,
+                                    date: date
+                                });
+                                addedCount++;
+                            } else {
+                                skippedCount++;
                             }
                         });
-                        alert('นำเข้าข้อมูลสำเร็จแล้ว');
+                        alert(`สรุปการนำเข้า:\n✅ สำเร็จ: ${addedCount}\n⏭️ ข้าม (รายการซ้ำ): ${skippedCount}\n❌ ผิดพลาด (หาชื่อบัญชีไม่เจอ): ${errorCount}`);
                         e.target.value = null; 
                     }
                 };
@@ -216,7 +240,7 @@
                                     {accounts.map(acc => {
                                         const bal = transactions.filter(t => t.accountId === acc.id).reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
                                         return (
-                                            <div key={acc.id} onClick={() => setActiveAcc(acc.id)} className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${activeAcc === acc.id ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-50' : 'border-slate-50 bg-slate-50'}`}>
+                                            <div key={acc.id} onClick={() => setActiveAcc(acc.id)} className={`p-4 rounded-2xl border-2 transition-all cursor-pointer ${activeAcc === acc.id ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-50' : 'border-slate-50 bg-slate-50'}`}>
                                                 <div className="flex justify-between items-start">
                                                     <div className="flex-1 truncate">
                                                         <p className="font-bold text-slate-700 text-sm truncate">{acc.name}</p>

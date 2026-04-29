@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Smart Wallet Tracker ✨</title>
 
-    <link rel="manifest" href="./manifest.json">
-    <link rel="apple-touch-icon" href="./icon-512.png">
-    <link rel="icon" type="image/png" href="./icon-512.png">
-    <link rel="shortcut icon" href="./icon-512.png">
-
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-512.png">
+    <link rel="icon" type="image/png" href="icon-512.png">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Smart Wallet">
@@ -90,6 +89,7 @@
                 if (transactions.length === 0) return alert('ไม่มีข้อมูลสำหรับส่งออก');
                 const wb = XLSX.utils.book_new();
 
+                // ชีท 1: สรุปยอดรวม
                 const summaryData = accounts.map(acc => {
                     const bal = transactions.filter(t => t.accountId === acc.id)
                         .reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
@@ -97,9 +97,9 @@
                 });
                 XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryData), "สรุปภาพรวม");
 
+                // ชีทต่อๆ ไป: แยกรายบัญชี
                 accounts.forEach(acc => {
-                    const accTransactions = transactions
-                        .filter(t => t.accountId === acc.id)
+                    const accData = transactions.filter(t => t.accountId === acc.id)
                         .sort((a, b) => new Date(a.date) - new Date(b.date))
                         .map(t => ({
                             'วันที่': t.date,
@@ -107,13 +107,11 @@
                             'ประเภท': t.type === 'income' ? 'รายรับ' : 'รายจ่าย',
                             'จำนวนเงิน': t.amount
                         }));
-                    
-                    if (accTransactions.length > 0) {
-                        const sheetName = acc.name.substring(0, 30).replace(/[*?:\/\\\[\]]/g, '');
-                        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(accTransactions), sheetName);
+                    if (accData.length > 0) {
+                        const sName = acc.name.substring(0, 30).replace(/[*?:\/\\\[\]]/g, '');
+                        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(accData), sName);
                     }
                 });
-
                 XLSX.writeFile(wb, `รายงานการเงิน_${new Date().toLocaleDateString()}.xlsx`);
             };
 
@@ -124,7 +122,7 @@
                 if (editingId) db.ref(`transactions/${editingId}`).update(payload);
                 else db.ref('transactions').push(payload);
                 setEditingId(null);
-                setFormData({ ...formData, description: '', amount: '' });
+                setFormData({ ...formData, description: '', amount: '', type: 'expense', date: new Date().toISOString().split('T')[0] });
             };
 
             const stats = useMemo(() => {
@@ -164,13 +162,14 @@
                         <h1 className="text-lg font-bold text-blue-800 flex items-center gap-2">
                             <i className="fa-solid fa-wallet"></i> SMART WALLET
                         </h1>
-                        <button onClick={exportToExcel} className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 hover:bg-emerald-600 transition-all shadow-sm">
+                        <button onClick={exportToExcel} className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 hover:bg-emerald-600 shadow-sm transition-all">
                             <i className="fa-solid fa-file-excel"></i>
                             <span>ส่งออก EXCEL</span>
                         </button>
                     </header>
                     
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                        {/* ส่วนบันทึก */}
                         <div className="lg:col-span-4">
                             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
                                 <h2 className="text-md font-bold mb-4 text-slate-700 flex items-center gap-2">
@@ -186,18 +185,19 @@
                                         <select value={formData.accountId} onChange={e => setFormData({...formData, accountId: e.target.value})} className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none">
                                             {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                                         </select>
-                                        <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                                        <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none" />
                                     </div>
-                                    <input type="text" placeholder="ระบุรายละเอียด..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+                                    <input type="text" placeholder="ระบุรายละเอียด..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none" />
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-blue-300 text-xl">฿</span>
                                         <input type="number" step="any" placeholder="0.00" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full pl-10 pr-4 py-4 bg-blue-50 border-2 border-blue-100 rounded-2xl font-bold text-2xl text-right text-blue-700 outline-none" />
                                     </div>
-                                    <button type="submit" className="w-full py-3.5 bg-blue-600 text-white font-bold rounded-2xl text-sm shadow-lg hover:bg-blue-700 transition-all">บันทึกข้อมูล</button>
+                                    <button type="submit" className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl text-sm shadow-lg hover:bg-blue-700 transition-all">บันทึกข้อมูล</button>
                                 </form>
                             </div>
                         </div>
 
+                        {/* ส่วนสรุปและประวัติ */}
                         <div className="lg:col-span-8 space-y-4">
                             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 font-bold">
                                 <div className="flex justify-between items-center mb-4">
@@ -230,29 +230,29 @@
                                             <div className="space-y-3">
                                                 {groupedTransactions[date].map(t => (
                                                     <div key={t.id} className="flex flex-col sm:grid sm:grid-cols-12 gap-2 sm:items-center py-3 px-3 sm:px-1 border-b border-slate-50 last:border-0 bg-slate-50 sm:bg-transparent rounded-xl sm:rounded-none relative group transition-all">
-                                                        <div className="col-span-4 min-w-0">
+                                                        <div className="col-span-4 min-w-0 pr-1">
                                                             <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase leading-none mb-1">รายการ</p>
                                                             <p className="font-bold text-xs text-slate-700 truncate font-bold">{t.description}</p>
                                                         </div>
                                                         <div className="flex justify-between sm:contents">
-                                                            <div className="sm:col-span-2 sm:text-center">
+                                                            <div className="sm:col-span-2 sm:text-center border-l border-slate-50 pl-2 sm:pl-0">
                                                                 <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase leading-none mb-1">บัญชี</p>
                                                                 <p className="text-[10px] text-blue-500 truncate">{accounts.find(a => a.id === t.accountId)?.name || '-'}</p>
                                                             </div>
-                                                            <div className="sm:col-span-3 sm:text-right">
+                                                            <div className="sm:col-span-3 sm:text-right border-l border-slate-50 pr-2 sm:pr-0">
                                                                 <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase leading-none mb-1">จำนวนเงิน</p>
                                                                 <p className={`font-bold text-xs ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                                     {t.type === 'income' ? '+' : '-'}฿{t.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}
                                                                 </p>
                                                             </div>
-                                                            <div className="sm:col-span-3 sm:text-right">
+                                                            <div className="sm:col-span-3 sm:text-right border-l border-slate-50">
                                                                 <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase leading-none mb-1">ยอดคงเหลือ</p>
                                                                 <p className="font-bold text-xs text-slate-800 font-bold">฿{t.runningBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
                                                             </div>
                                                         </div>
                                                         <div className="absolute right-2 top-2 sm:relative sm:top-0 sm:right-0 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                                            <button onClick={() => {setEditingId(t.id); setFormData(t); window.scrollTo({top:0, behavior:'smooth'})}} className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all"><i className="fa-solid fa-pen text-[9px]"></i></button>
-                                                            <button onClick={() => { if(confirm('ลบรายการ?')) db.ref(`transactions/${t.id}`).remove(); }} className="w-7 h-7 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-600 hover:text-white transition-all"><i className="fa-solid fa-trash text-[9px]"></i></button>
+                                                            <button onClick={() => {setEditingId(t.id); setFormData(t); window.scrollTo({top:0, behavior:'smooth'})}} className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm"><i className="fa-solid fa-pen text-[9px]"></i></button>
+                                                            <button onClick={() => { if(confirm('ลบ?')) db.ref(`transactions/${t.id}`).remove(); }} className="w-7 h-7 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-600 hover:text-white transition-all shadow-sm"><i className="fa-solid fa-trash text-[9px]"></i></button>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -268,5 +268,4 @@
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 text-center">
                             <div className="bg-white w-full max-w-xs p-6 rounded-3xl shadow-2xl">
                                 <h3 className="text-md font-bold mb-4 font-bold">เพิ่มบัญชีใหม่</h3>
-                                <input autoFocus type="text" value={newAccName} onChange={e => setNewAccName(e.target.value)} placeholder="ชื่อบัญชี..." className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-center mb-6 text-sm outline-none" />
-                                <div className=
+                                <input autoFocus type="text" value={newAccName} o

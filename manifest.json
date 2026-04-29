@@ -1,29 +1,16 @@
 {
-  "short_name": "FinanceDiary",
-  "name": "My Sweet Finance Diary ✨",
-  "description": "บันทึกรายรับรายจ่ายสไตล์หวานละมุน",
+  "short_name": "Smart Wallet",
+  "name": "Smart Wallet Tracker",
   "icons": [
     {
       "src": "icon-512.png",
-      "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any"
-    },
-    {
-      "src": "icon-512.png",
       "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "maskable" 
-    },
-    {
-      "src": "icon-512.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ],
   "start_url": "./index.html",
   "display": "standalone",
-  "theme_color": "#F43F5E",
-  "background_color": "#FFF5F7"
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff"
 }

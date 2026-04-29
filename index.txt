@@ -196,13 +196,13 @@
                                                             <p className="font-bold text-xs text-slate-700 truncate">{t.description}</p>
                                                         </div>
 
-                                                        {/* บัญชี (15%) */}
+                                                        {/* บัญชี (35%) */}
                                                         <div className="col-span-2 text-center">
                                                             <p className="text-[9px] font-bold text-blue-400 uppercase">บัญชี</p>
                                                             <p className="text-[10px] text-slate-400 truncate">{accounts.find(a => a.id === t.accountId)?.name || '-'}</p>
                                                         </div>
 
-                                                        {/* จำนวนเงิน (25%) */}
+                                                        {/* จำนวนเงิน (35%) */}
                                                         <div className="col-span-3 text-right pr-2">
                                                             <p className="text-[9px] font-bold text-emerald-500 uppercase">เงิน รับ/จ่าย</p>
                                                             <p className={`font-bold text-xs ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
@@ -210,7 +210,7 @@
                                                             </p>
                                                         </div>
 
-                                                        {/* ยอดคงเหลือ (25%) */}
+                                                        {/* ยอดคงเหลือ (35%) */}
                                                         <div className="col-span-3 text-right pl-2 border-l border-slate-100 relative">
                                                             <p className="text-[9px] font-bold text-slate-400 uppercase">คงเหลือ</p>
                                                             <p className="font-bold text-xs text-slate-800">฿{t.runningBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
